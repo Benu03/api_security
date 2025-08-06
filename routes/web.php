@@ -12,6 +12,8 @@ $router->group(['middleware' => 'key_service'], function () use ($router)
 
                 #MAIN
                 $router->post('get-users-access', 'MainController@UserAccess');
+                $router->post('sync-users-access', 'MainController@SyncUseraccess');
+
 
 
                 #PRESENSI

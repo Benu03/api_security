@@ -54,6 +54,16 @@ return [
             'charset'   => 'utf8',
         ],
 
+        'sso' => [
+            'driver'    => env('DB_DRIVER_SSO', 'pgsql'),
+            'host'      => env('DB_HOST_SSO', '127.0.0.1'),
+            'port'      => env('DB_PORT_SSO', 5432),
+            'database'  => env('DB_DATABASE_SSO', 'forge'),
+            'username'  => env('DB_USERNAME_SSO', 'forge'),
+            'password'  => env('DB_PASSWORD_SSO', ''),
+            'charset'   => 'utf8',
+        ],
+
 
 
       
