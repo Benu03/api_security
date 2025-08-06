@@ -32,6 +32,7 @@ public function UserAccess(Request $request)
     $userAccess = DB::connection('qms')
         ->table('mst.mst_users_access')
         ->where('username', $username)
+        ->whereNull('deleted_date')
         ->first();
 
 
