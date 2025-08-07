@@ -96,9 +96,10 @@ public function PostPresensi(Request $request)
     $month = $time->format('m');
     $day = $time->format('j');
     $timestamp = $time->timestamp;
+    $nik = $request->input('nik');
 
     $type_presensi = $request->input('type_presensi');
-    $shift_code = $request->input('shift_code');
+    $shift_date = $request->input('shift_date');
 
     $folderPath = storage_path("app/data/presensi/{$year}/{$month}/{$day}");
 
@@ -153,6 +154,7 @@ public function PostPresensi(Request $request)
             'foto'          => $relativePath,
             'time_presensi' => $time_presensi,
             'shift_code'    => $shift_code,
+            'shift_date'    => $shift_date,
             'created_by'    => $username,
         ];
 
