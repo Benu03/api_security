@@ -197,9 +197,9 @@ public function GetShiftCode(Request $request)
     Log::info('Begin GetShiftCode');
 
     $nik = $request->nik;
-    $time_presensi = $request->time_presensi;
+    $shift_date = $request->shift_date;
 
-    $time = Carbon::parse($time_presensi, 'Asia/Jakarta');    
+    $time = Carbon::parse($shift_date, 'Asia/Jakarta');    
     $year = $time->format('Y');
     $month = $time->format('m');
     $day = $time->format('j'); 
@@ -210,6 +210,8 @@ public function GetShiftCode(Request $request)
         ->where('nik', $nik)
         ->where('year_month_period', $year . '_' . $month)
         ->first();
+
+
 
     if (!$jadwal) {
         Log::warning("ShiftCode tidak ditemukan untuk NIK: $nik, Periode: $year . '_' . $month");
@@ -223,13 +225,46 @@ public function GetShiftCode(Request $request)
     $dayKey = (string) intval($day);
     $shiftCode = $jadwal->$dayKey ?? null;
 
+    if (!$shiftCode) {
+        return response()->json([
+            'status'  => 404,
+            'success' => false,
+            'message' => 'Kode shift tidak tersedia untuk tanggal tersebut.',
+        ], 404);
+    }
+
+    $shiftDetail = DB::connection('qms')
+        ->table('scr.scr_mst_shift')
+        ->where('shift_code', $shiftCode)
+        ->first();
+
+    if (!$shiftDetail) {
+        return response()->json([
+            'status'  => 404,
+            'success' => false,
+            'message' => 'Detail shift tidak ditemukan.',
+        ], 404);
+    }
+
+    $data = [
+        'shift_code' => $shiftCode,
+    ];
+
+    // Jika bukan OFF, sertakan detail waktu
+    if (strtoupper($shiftCode) !== 'OFF') {
+        $data['shift_date'] = $shift_date ?? null;
+        $data['start_time'] = $shiftDetail->start_time ?? null;
+        $data['end_time']   = $shiftDetail->end_time ?? null;
+        $data['remark']     = $shiftDetail->remark ?? null;
+    }
+
     Log::info('End GetShiftCode');
 
     return response()->json([
         'status'  => 200,
         'success' => true,
         'message' => 'Berhasil mengambil kode shift',
-        'data'    => $shiftCode,
+        'data'    => $data,
     ], 200);
 }
 
@@ -270,7 +305,7 @@ public function GetListPresensi(Request $request)
           $start_date = $request->start_date;
           $end_date = $request->end_date;
 
-$absen = DB::connection('qms')
+        $absen = DB::connection('qms')
         ->table('scr.scr_presensi_jadwal')
         ->where('username', $username)
           ->where('username', $username)
