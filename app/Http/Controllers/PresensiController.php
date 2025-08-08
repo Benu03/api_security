@@ -12,6 +12,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Intervention\Image\Facades\Image; 
 use Illuminate\Support\Facades\App;
+use App\Http\Controllers\CheckpointController;
 
 
 class PresensiController extends Controller
@@ -104,6 +105,7 @@ public function PostPresensi(Request $request)
     $shift_code = $request->input('shift_code');
     $shift_date = $request->input('shift_date');
 
+
     $folderPath = storage_path("app/data/presensi/{$year}/{$month}/{$day}");
 
     if (!File::exists($folderPath)) {
@@ -164,6 +166,15 @@ public function PostPresensi(Request $request)
         DB::connection('qms')
             ->table('scr.scr_presensi_trx')
             ->insert($dataInsert);
+
+
+        // Passing Create Task Checkpoint
+        if($type_presensi == 'IN')
+        {
+            $checkpointController = new CheckpointController();
+            $checkpointController->ScheduleCheckpointPatroli($username);
+        }
+
 
         Log::info('End PostPresensi');
 
