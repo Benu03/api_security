@@ -11,6 +11,8 @@ use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Intervention\Image\Facades\Image; 
+use Illuminate\Support\Facades\App;
+
 
 class PresensiController extends Controller
 {
@@ -99,6 +101,7 @@ public function PostPresensi(Request $request)
     $nik = $request->input('nik');
 
     $type_presensi = $request->input('type_presensi');
+    $shift_code = $request->input('shift_code');
     $shift_date = $request->input('shift_date');
 
     $folderPath = storage_path("app/data/presensi/{$year}/{$month}/{$day}");
@@ -299,33 +302,124 @@ public function GetFotoPresensi($data)
     ]);
 }
 
-public function GetListPresensi(Request $request)
+
+public function GetListJadwalPresensi(Request $request)
 {
-        Log::info('Begin GetListPresensi');
-          $username = $request->username;
-          $nik = $request->nik;
-          $start_date = $request->start_date;
-          $end_date = $request->end_date;
+    Log::info('Begin GetListJadwalPresensi');
+    Carbon::setLocale('id');
+    $nik = $request->nik;
+    $start_date = $request->start_date; 
+    $end_date = $request->end_date;   
 
-        $absen = DB::connection('qms')
-        ->table('scr.scr_presensi_jadwal')
-        ->where('username', $username)
-          ->where('username', $username)
-        ->get();
-
-
-
-
-        Log::info('Begin GetListPresensi');
-    
+    if (!$nik || !$start_date || !$end_date) {
         return response()->json([
-            'status'  => 200,
-            'success' => true,
-            'message' => 'Presensi berhasil',
-            'data'    => [],
-        ], 200);
+            'status' => 400,
+            'success' => false,
+            'message' => 'NIK, start_date, dan end_date harus diisi.',
+            'data' => [],
+        ], 400);
+    }
+
+    App::setLocale('id'); 
+
+    $start = Carbon::parse($start_date);
+    $end = Carbon::parse($end_date);
+
+    $result = [];
+    $cacheJadwal = [];
+
+    $date = $start->copy();
+    while ($date->lte($end)) {
+        $period = $date->format('Y_m');
+        $day = (string)(int)$date->format('d');
+
+        if (!isset($cacheJadwal[$period])) {
+            $jadwal = DB::connection('qms')
+                ->table('scr.scr_presensi_jadwal')
+                ->where('nik', $nik)
+                ->where('year_month_period', $period)
+                ->first();
+
+            $cacheJadwal[$period] = $jadwal;
+        } else {
+            $jadwal = $cacheJadwal[$period];
+        }
+
+        $tanggal = $date->format('Y-m-d');
+        $hari = $date->translatedFormat('l');  
+
+        $shift_code = $jadwal->$day ?? null;
+        $start_time = null;
+        $end_time = null;
+        $remark = null;
+
+        if ($shift_code) {
+            if (strtoupper($shift_code) === 'OFF') {
+                $remark = 'Libur';
+            } else {
+                $shiftInfo = DB::connection('qms')
+                    ->table('scr.scr_mst_shift')
+                    ->where('shift_code', $shift_code)
+                    ->first();
+
+                if ($shiftInfo) {
+                    $start_time = $shiftInfo->start_time ? Carbon::parse($shiftInfo->start_time)->format('H:i') : null;
+                    $end_time = $shiftInfo->end_time ? Carbon::parse($shiftInfo->end_time)->format('H:i') : null;
+                    $remark = $shiftInfo->remark;
+                }
+            }
+        }
+        
+        $time_in = null;
+        $time_out = null;
+        $id_presensi = null;
+        $id_time_in = null;
+        $id_time_out = null;
+
+        if ($shift_code) {
+            $presensi = DB::connection('qms')
+                ->table('scr.scr_presensi_trx')
+                ->where('nik', $nik)
+                ->where('shift_code', $shift_code)
+                ->whereDate('shift_date', $tanggal)
+                ->get();
 
 
+            foreach ($presensi as $trx) {
+                if (strtoupper($trx->type_presensi) === 'IN') {
+                    $time_in = $trx->time_presensi;
+                    $id_time_in = $trx->id;
+                } elseif (strtoupper($trx->type_presensi) === 'OUT') {
+                    $time_out = $trx->time_presensi;
+                    $id_time_out = $trx->id;
+                }
+            }
+        }
+
+        $result[] = [
+            'tanggal'     => $tanggal,
+            'hari'        => $hari,
+            'shift_code'  => $shift_code,
+            'start_time'  => $start_time,
+            'end_time'    => $end_time,
+            'remark'      => $remark,
+            'time_in'     => $time_in,
+            'id_time_in'  => $id_time_in,
+            'time_out'    => $time_out,
+            'id_time_out'  => $id_time_out,
+        ];
+
+        $date->addDay();
+    }
+
+    Log::info('End GetListJadwalPresensi');
+
+    return response()->json([
+        'status'  => 200,
+        'success' => true,
+        'message' => 'Berhasil mengambil jadwal presensi.',
+        'data'    => $result,
+    ], 200);
 }
 
 
