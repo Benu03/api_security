@@ -191,5 +191,58 @@ class CheckpointController extends Controller
     }
 
 
+    public function ListCheckpointPatroli(Request $request)
+    {
+        Log::info('Begin ListCheckpointPatroli');
+        $username = $request->username;
+        $start_date = $request->start_date; 
+        $end_date = $request->end_date;   
 
+
+         if (!$username || !$start_date || !$end_date) {
+            return response()->json([
+                'status'  => 400,
+                'success' => false,
+                'message' => 'Username, start_date, dan end_date wajib diisi.'
+            ], 400);
+        }
+
+        try {
+            $data = DB::connection('qms')
+                ->table('scr.scr_task_patroli')
+                ->where('username', $username)
+                ->whereBetween('created_date', [$start_date, $end_date])
+                ->select(
+                    'id',
+                    'checkpoint_code',
+                    'time_checkpoint',
+                    'seq',
+                    'latitude',
+                    'longitude',
+                    'created_date'
+                )
+                ->orderBy('created_date', 'desc')
+                ->get();
+
+            Log::info('End ListCheckpointPatroli');
+
+            return response()->json([
+                'status'  => 200,
+                'success' => true,
+                'message' => 'Data Checkpoint patroli berhasil diambil.',
+                'data'    => $data
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error("Error ListCheckpointPatroli: " . $e->getMessage());
+            return response()->json([
+                'status'  => 500,
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengambil data.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    
 }

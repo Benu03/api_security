@@ -22,6 +22,7 @@ $router->group(['middleware' => 'key_service'], function () use ($router)
                 
                 #CHECKPOIN PATROLI
                 $router->post('post-checkpoint-patroli', 'CheckpointController@PostCheckpointPatroli');
+                $router->post('list-checkpoint-patroli', 'CheckpointController@ListCheckpointPatroli');
                 
                 
                 #TEMUAN PATROLI
